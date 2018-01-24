@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import random
+from mnist_loader imoprt load_data, load_data_wrapper, vectorized_result
 
 class NeuralNet:
 
@@ -24,12 +25,13 @@ class NeuralNet:
 	def sigmoid_derivative(self,x):  #sigmoid derivative function (for backpropagation)
 		return (np.exp(-x)/((1 + math.exp(-x)) ** 2))
 
-	def divide_and_learn(self, training_set, num_batches, batch_size):
+	def divide_and_learn(self, training_set = None, num_batches, batch_size, eta):
+		training_set = load_data_wrapper()
 		batches = []
 		for i in np.arange(0, len(training_set), num_batches):
 			batches.append(training_set[i:i+num_batches])
-		
-
+			for batch in batches:
+				learn_NN(batch, eta, batch_size)
 
 
 	def backprop(self, labels):
@@ -39,13 +41,13 @@ class NeuralNet:
 		delta = [delta_L];
 		for i in range(len(self.weights)):
 			delta.insert(0,(np.dot(self.weights[-i-1].T, delta[-1-i])*sigmoid_derivative(self.z[-i-2])))
-		for j in range(len(self.weights) - 1):		
-			del_weights.insert(0, (np.dot(delta[-i-2], self.activations[-i-3].T))) 		
+		for j in range(len(self.weights) - 1):
+			del_weights.insert(0, (np.dot(delta[-i-2], self.activations[-i-3].T)))
 		return del_weights
 
-	def learn_NN(self, X, labels, eta, batch_size):
+	def learn_NN(self, X, eta, batch_size):
 		add_weight = 0;
-		for x,_label in zip(X,labels):
+		for x,_label in X:
 			FeedForward(x)
 			del_weight = self.backprop(_label)
 			add_weight = add_weight + eta*del_weight
@@ -70,9 +72,3 @@ class NeuralNet:
 
 	def cost_derivative_CEntropy_noReg(self, label):
 		cost_der = np.zeros(np.shape(self.activations[-1]))
-		
-
-	
-
-	
-			
