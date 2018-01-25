@@ -10,6 +10,8 @@ class NeuralNet:
 		self.num_units = num_units
 		self.weights = [np.random.randn(x+1,y).astype(float) for x,y in zip(num_units[:-1], num_units[1:])]     #(x+1) to accomodate the bias unit, dimensions =[from_layer, to_layer]
 		self.learn_rate = 0.1
+		#print self.weights
+		#print'$$$$$'
 
 	def FeedForward(self, X):    #X is a numpy column
 		self.activations = [X]         #store activation values, first column being equal to the input values
@@ -25,16 +27,18 @@ class NeuralNet:
 			#self.z_no_bias.append(np.dot(self.weights[i], np.vstack((np.ones(1), self.z_no_bias[-1]))))
 			self.z.append(np.dot(self.weights[i].T, self.z[-1]).astype(float))
 			#print "Z_size:", np.shape(self.z[i]), "Activations_size:", np.shape(self.activations[i])
-		
-
+		#print self.activations[1]
+		#print self.activations[2]	
+	
 	def sigmoid(self, x):         # sigmoid activation function
 		return (1.0/(1.0 + np.exp(-x)))
 
 	def sigmoid_derivative(self,x):  #sigmoid derivative function (for backpropagation)
-		return (self.sigmoid(x)*(1.0-self.sigmoid(x))
+		return self.sigmoid(x)*(1.0-self.sigmoid(x))
 
 	def divide_and_learn(self, training_set, batch_size, eta, epochs, test_data = None):
-		num_test = len(test_data)		
+		num_test = len(test_data)
+				
 		for j in xrange(epochs):			
 			random.shuffle(training_set)
 			batches = []
@@ -43,7 +47,7 @@ class NeuralNet:
 			for batch in batches:
 				self.learn_NN(batch, eta, batch_size)
 			if test_data:
-				 print "Epoch {0}: {1} / {2}".format(j, self.evaluate(test_data), num_test)
+				 print "Epoch {0}: {1} / {2}".format(j, self.evaluate(test_data), num_test) 
 			else:
 				 print "Epoch {0} complete".format(j)
 
@@ -59,12 +63,11 @@ class NeuralNet:
 			delta.insert(0,(np.dot(self.weights[-i-1][1:,:], delta[-1-i])*self.sigmoid_derivative(self.z[-i-2][1:,:])))
 		for j in range(len(self.weights) - 1):
 			del_weights.insert(0, np.dot(self.activations[-j-3], delta[-j-2].T))
+			#print del_weights[0]
 		return del_weights
 
 	def learn_NN(self, X, eta, batch_size):
-		add_weight = []
-		for i in self.weights:
-			add_weight.append(np.zeros(np.shape(i)).astype(float))
+		add_weight = [np.zeros(i.shape) for i in self.weights]
 		for x,_label in X:
 			self.FeedForward(x)
 			del_weight = self.backprop(_label)
@@ -94,10 +97,16 @@ class NeuralNet:
 		cost_der = np.zeros(np.shape(self.activations[-1]))
 
 	def evaluate(self, test_data):
-		test_results = [(np.argmax(self.FeedForward(x)), y) for (x, y) in test_data]
-        	return sum(int(x == y) for (x, y) in test_results)
+		self.test_results = []
+		for x,y in test_data:
+			self.FeedForward(x)
+			self.test_results.append((np.argmax(self.activations[-1]),y))
+        	return sum(int(x == y) for (x, y) in self.test_results)
 
 
 training_set, test_set = load_data_wrapper()
 net = NeuralNet([784,30,10])
-net.divide_and_learn(training_set, 10, 3.0, 30, test_data = test_set)
+a1 = np.array([1, 0, -1])
+z1 = net.sigmoid_derivative(a1)
+#print z1
+net.divide_and_learn(training_set, 10, 2.0, 30, test_data = test_set)
