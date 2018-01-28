@@ -1,3 +1,4 @@
+
 import numpy as np
 import math
 import random
@@ -8,7 +9,7 @@ class NeuralNet:
 	def __init__(self, num_units):
 		self.num_layers = len(num_units)
 		self.num_units = num_units
-		self.weights = [np.random.randn(x+1,y).astype(float) for x,y in zip(num_units[:-1], num_units[1:])]     #(x+1) to accomodate the bias unit, dimensions =[from_layer, to_layer]
+		self.weights = [(np.random.randn(x+1,y)/np.sqrt(x)).astype(float) for x,y in zip(num_units[:-1], num_units[1:])]     #(x+1) to accomodate the bias unit, dimensions =[from_layer, to_layer]
 		self.learn_rate = 0.1
 		#print self.weights
 		#print'$$$$$'
@@ -44,9 +45,22 @@ class NeuralNet:
 	def sigmoid_derivative(self,x):  #sigmoid derivative function (for backpropagation)
 		return self.sigmoid(x)*(1.0-self.sigmoid(x))
 
+	def ReLU(self,x):
+		return np.array([np.maximum(i,0.0) for i in np.nditer(x)]).reshape(a.shape)
+	
+	def ReLU_derivative(self,x):
+		return np.array([1.0 if i>0 else 0.0 for i in np.nditer(x)]).reshape(a.shape)
+
+	def tanh(self, x):
+		return 2.0*self.sigmoid(2.0*x) - 1.0 
+
+	def tanh_derivative(self,x):
+		return (1.0 - self.tanh(x)**2)
+
 	def divide_and_learn(self, training_set, batch_size, eta, epochs, lmbda, test_data = None, L1_Reg = False, L2_Reg = False, dropout = 0.0):
 		num_test = len(test_data)
-		self.num_train = len(training_set)		
+		self.num_train = len(training_set)
+		self.train = training_set		
 		for j in xrange(epochs):			
 			random.shuffle(training_set)
 			batches = []
@@ -55,14 +69,15 @@ class NeuralNet:
 			for batch in batches:
 				self.learn_NN(batch, eta, batch_size, lmbda, L1_Reg, L2_Reg, dropout)
 			if test_data:
-				 print "Epoch {0}: {1} / {2}".format(j, self.evaluate(test_data), num_test) 
+				 print "Epoch {0} Test data: {1} / {2} Training data: {3} / {4}".format(j, self.evaluate(test_data, 1), num_test, self.evaluate(self.train, 0), self.num_train) 
 			else:
 				 print "Epoch {0} complete".format(j)
 
 
 	def backprop(self, label):
-		last_layer_cost = self.cost_derivative_MSE_noReg(label)
-		delta_L = last_layer_cost*self.sigmoid_derivative(self.z[-1])
+		#last_layer_cost = self.cost_derivative_MSE_noReg(label)
+		#delta_L = last_layer_cost*self.sigmoid_derivative(self.z[-1])
+		delta_L = self.cost_derivative_CEntropy_noReg(label)
 		del_weight_L = np.dot(self.activations[-2], delta_L.T)
 		del_weights = [del_weight_L];
 		delta = [delta_L];
@@ -113,7 +128,9 @@ class NeuralNet:
 		return -1*np.sum(cost)
 
 	def cost_derivative_CEntropy_noReg(self, label):
-		cost_der = np.zeros(np.shape(self.activations[-1]))
+		cost_der = np.zeros(np.shape(self.activations[-1])).astype(float)
+		cost_der = self.activations[-1] - label
+		return cost_der
 
 	def cost_function_MSE_L2Reg(self, label, lmbda):
 		cost = np.zeros(np.shape(self.activations[-1])).astype(float)
@@ -136,17 +153,21 @@ class NeuralNet:
 		cost = cost - reg_term*lmbda/2
 		return -1*np.sum(cost)
 
-	def evaluate(self, test_data):
-		self.test_results = []
-		for x,y in test_data:
-			self.FeedForward(x)
-			self.test_results.append((np.argmax(self.activations[-1]),y))
-        	return sum(int(x == y) for (x, y) in self.test_results)
+	def evaluate(self, data, convert):
+		results = []
+		for x,y in data:
+			self.FeedForward(x, dropout = 0.0)
+			if convert == 1:
+				results.append((np.argmax(self.activations[-1]),y))                       # test_set has different representation, with the label being a number betwenn 0-9
+			else: 
+				results.append((np.argmax(self.activations[-1]), np.argmax(y)))		  # training_set has labels of a 1-d zeros vector except the index = number being 1
+        	return sum(int(np.array_equal(x,y)) for (x, y) in results)
+	
 
 
 training_set, test_set = load_data_wrapper()
-net = NeuralNet([784,50,10])
+net = NeuralNet([784,30,10])
 a1 = np.array([1, 0, -1])
 z1 = net.sigmoid_derivative(a1)
 #print z1
-net.divide_and_learn(training_set, 10, 1.2, 30, 0.5, test_data = test_set, L1_Reg = False, L2_Reg = False, dropout = 0.5)
+net.divide_and_learn(training_set, 10, 0.1, 30, 0.5, test_data = test_set, L1_Reg = False, L2_Reg = False, dropout = 0.0)
