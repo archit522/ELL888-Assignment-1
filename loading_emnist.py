@@ -9,13 +9,13 @@ def load_data():
     i_train = []
     l_train = []
     for x, y in zip(labels_train, images_train):
-        if x >=10 and x<= 15:  #See the images emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
+        if x >=10 and x<= 15:  #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
             i_train.append(np.reshape(y, (784, 1))) #Reshaping to (784, 1)
             l_train.append(form_vector(x))  #Converting labels to vectors
     i_test = []
     l_test = []
     for x, y in zip(labels_test, images_test):
-        if x>=10 and x<=15:   #See the images emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
+        if x>=10 and x<=15:   #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
             i_test.append(np.reshape(y, (784, 1)))#Reshaping to (784, 1)
             l_test.append(x-10)#Converting labels to vectors
     training_data = zip(i_train, l_train) #Zipping training images and labels
