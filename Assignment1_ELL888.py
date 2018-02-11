@@ -2,7 +2,8 @@
 import numpy as np
 import math
 import random
-from mnist_loader import load_data, load_data_wrapper, vectorized_result
+from mnist_loader import load_data
+import matplotlib.pyplot as plt
 
 class NeuralNet:
 
@@ -10,7 +11,6 @@ class NeuralNet:
 		self.num_layers = len(num_units)
 		self.num_units = num_units
 		self.weights = [(np.random.randn(x+1,y)/np.sqrt(x)).astype(float) for x,y in zip(num_units[:-1], num_units[1:])]     #(x+1) to accomodate the bias unit, dimensions =[from_layer, to_layer]
-		self.learn_rate = 0.1
 		#print self.weights
 		#print'$$$$$'
 
@@ -30,11 +30,12 @@ class NeuralNet:
 			self.z[-1] = np.vstack((np.ones(1), self.z[-1]))
 			self.activations[-1] = np.vstack((np.ones(1), self.activations[-1]))
 			#print "Shape_weights:", np.shape(self.weights[i]), "Activations:", np.shape(np.vstack((np.ones(1), self.activations[-1])))
+			self.z.append(np.dot(self.weights[i].T, (self.activations[-1]*drop_coeff)).astype(float))			
 			self.activations.append(self.sigmoid(np.dot(self.weights[i].T, (self.activations[-1]*drop_coeff))).astype(float))     #stack a [0] on top of each column for accomodating bias units			
 			#self.activations.append(self.sigmoid(np.dot(self.weights[i].T, self.activations[-1])).astype(float))
 			#self.activations_no_bias.append(sigmoid(np.dot(self.weights[i], np.vstack((np.zeros(1), self.activations_no_bias[-1])))))			
 			#self.z_no_bias.append(np.dot(self.weights[i], np.vstack((np.ones(1), self.z_no_bias[-1]))))
-			self.z.append(np.dot(self.weights[i].T, (self.z[-1]*drop_coeff)).astype(float))
+			
 			#print "Z_size:", np.shape(self.z[i]), "Activations_size:", np.shape(self.activations[i])
 		#print self.activations[1]
 		#print self.activations[2]	
@@ -46,10 +47,15 @@ class NeuralNet:
 		return self.sigmoid(x)*(1.0-self.sigmoid(x))
 
 	def ReLU(self,x):
-		return np.array([np.maximum(i,0.0) for i in np.nditer(x)]).reshape(a.shape)
+		x[x<0.0] = 0.0
+		return x;
 	
 	def ReLU_derivative(self,x):
-		return np.array([1.0 if i>0 else 0.0 for i in np.nditer(x)]).reshape(a.shape)
+		x[x==0.0] = 0.0		
+		x[x<0.0] = 0.0
+		x[x>0.0] = 1.0
+	
+		return x;
 
 	def tanh(self, x):
 		return 2.0*self.sigmoid(2.0*x) - 1.0 
@@ -57,7 +63,9 @@ class NeuralNet:
 	def tanh_derivative(self,x):
 		return (1.0 - self.tanh(x)**2)
 
-	def divide_and_learn(self, training_set, batch_size, eta, epochs, lmbda, test_data = None, L1_Reg = False, L2_Reg = False, dropout = 0.0):
+	def divide_and_learn(self, training_set, batch_size, eta, epochs, lmbda, num_iter, test_data = None, L1_Reg = False, L2_Reg = False, dropout = 0.0):
+		all_test=[]              #Store the number of incorrect test_set predictions for all the epochs
+		all_train=[]		 #Store the number of incorrect train_set predictions for all the epochs
 		num_test = len(test_data)
 		self.num_train = len(training_set)
 		self.train = training_set		
@@ -68,11 +76,31 @@ class NeuralNet:
 				batches.append(training_set[i:i+batch_size])
 			for batch in batches:
 				self.learn_NN(batch, eta, batch_size, lmbda, L1_Reg, L2_Reg, dropout)
+			test_pred = self.evaluate(test_data, 1)
+			train_pred = self.evaluate(self.train, 0)
 			if test_data:
-				 print "Epoch {0} Test data: {1} / {2} Training data: {3} / {4}".format(j, self.evaluate(test_data, 1), num_test, self.evaluate(self.train, 0), self.num_train) 
+				 print "Epoch {0} Test data: {1} / {2} Training data: {3} / {4}".format(j, test_pred, num_test, train_pred, self.num_train) 
 			else:
 				 print "Epoch {0} complete".format(j)
+			all_train.append((float(train_pred)/float(self.num_train))*100)
+			all_test.append((float(test_pred)/float(num_test))*100)
+		fig1 = plt.figure(num_iter+15)
+		plt.plot(np.arange(1, epochs+1), all_train, '-o')
+		plt.axis([0, 30, 0, 100])
+		plt.xlabel('Number of epochs', fontsize = 18)
+		plt.ylabel('Training Accuracy %', fontsize = 18)
+		fig1.suptitle('Training Error')		
+		fig1.savefig(str(num_iter)+' train.png', dpi=600)
+		
 
+		fig2 = plt.figure(num_iter+30)
+		plt.plot(np.arange(1, epochs+1, 1), all_test, '-o')
+		plt.axis([0, 30, 0, 100])
+		plt.xlabel('Number of epochs', fontsize = 18)
+		plt.ylabel('Test accuracy %', fontsize = 18)
+		fig2.suptitle('Test Error')
+		fig2.savefig(str(num_iter)+' test.png', dpi=600)
+		
 
 	def backprop(self, label):
 		#last_layer_cost = self.cost_derivative_MSE_noReg(label)
@@ -93,22 +121,22 @@ class NeuralNet:
 	def learn_NN(self, X, eta, batch_size, lmbda, L1_Reg = False, L2_Reg = False, dropout = 0.0):
 		add_weight = [np.zeros(i.shape) for i in self.weights]
 		reg_weight = [np.zeros(i.shape) for i in self.weights]
+		if L2_Reg:
+			reg_weight = [(1-float((lmbda*eta)/self.num_train))*k for k in self.weights]
+		elif L1_Reg:
+			temp = [np.sign(k) for k in self.weights]
+			reg_weight = [l -(float((lmbda*eta)/self.num_train))*k for l,k in zip(self.weights,temp)]
+		else:
+			reg_weight = [k for k in self.weights]
+		for j in range(len(self.weights)):						#revert back the regularization changes from the bias layers
+			reg_weight[j][0,:] = self.weights[j][0,:]
 		for x,_label in X:
 			self.FeedForward(x, dropout)
 			del_weight = self.backprop(_label)
-			for a in del_weight:
-				a = a.astype(float)
-			if L2_Reg:
-				reg_weight = [(1-(lmbda*eta)/self.num_train)*k for k in self.weights]
-			elif L1_Reg:
-				temp = [np.sign(k) for k in self.weights]
-				reg_weight = [(1 -(lmbda*eta)/self.num_train)*k for k in temp]
-			else:
-				reg_weight = [k for k in self.weights]
-			for j in range(len(self.weights)):										#revert back the regularization changes from the bias layers
-				reg_weight[j][0,:] = self.weights[j][0,:]
+			a = [i.astype(float) for i in del_weight]
+			del_weight = a
 			add_weight = [m + eta*n for m,n in zip(add_weight, del_weight)]
-		self.weights = [f - (g/batch_size) for f,g in zip(reg_weight, add_weight)]
+		self.weights = [f - (g/float(batch_size)) for f,g in zip(reg_weight, add_weight)]
 
 	def cost_function_MSE_noReg(self, label):
 		cost = np.zeros(np.shape(self.activations[-1])).astype(float)
@@ -143,6 +171,7 @@ class NeuralNet:
 		return np.sum(cost)
 
 	def cost_function_CEntropy_L2Reg(self, label, lmbda):
+
 		cost = np.zeros(np.shape(self.activations[-1]))
 		inv_activations = np.ones(np.shape(self.activations[-1])) - self.activations[-1]
 		inv_label = np.ones(np.shape(y)) - y
@@ -164,10 +193,8 @@ class NeuralNet:
         	return sum(int(np.array_equal(x,y)) for (x, y) in results)
 	
 
+training_data, test_data = load_data()
+net = NeuralNet([784, 30, 6])
+net.divide_and_learn(training_data, 10, 0.001, 30, 10, 1, test_data = test_data, L1_Reg = False, L2_Reg = False, dropout = 0.0)
 
-training_set, test_set = load_data_wrapper()
-net = NeuralNet([784,30,10])
-a1 = np.array([1, 0, -1])
-z1 = net.sigmoid_derivative(a1)
-#print z1
-net.divide_and_learn(training_set, 10, 0.1, 30, 0.5, test_data = test_set, L1_Reg = False, L2_Reg = False, dropout = 0.0)
+
