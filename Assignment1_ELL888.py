@@ -13,7 +13,7 @@ class NeuralNet:
 		self.weights = [(np.random.randn(x+1,y)).astype(float) for x,y in zip(num_units[:-1], num_units[1:])]     #(x+1) to accomodate the bias unit,    			weight_ dimensions =[from_layer, to_layer]
 		
 
-	def FeedForward(self, X, dropout = 0.0, batch_norm = 0):    #X is a numpy column		
+	def FeedForward(self, X, dropout = 0.0):    #X is a numpy column		
 		self.activations = [X]         #store activation values, first column being equal to the input values
 		self.z = [X]		       #store z values for each layer, to be used in backpropagation
 		for i in range(len(self.weights)):
@@ -91,7 +91,7 @@ class NeuralNet:
 		fig2.savefig(str(num_iter)+' test.png', dpi=600)
 		
 
-	def backprop(self, x, label, dropout, cost_function, batch_norm):
+	def backprop(self, x, label, dropout, cost_function):
 		self.FeedForward(x, dropout, batch_norm)
 		if cost_function == 1:                         #MSE cost function
 			delta_L = self.cost_derivative_MSE(label)
@@ -175,22 +175,22 @@ class NeuralNet:
 		if cost_function == 1:                            # if MSE cost requested
 			if convert == 1:                          # test set, convert labels for cost calculation
 				for a.b in data:
-					self.FeedForward(a, dropout = 0.0, batch_norm = 0)	
+					self.FeedForward(a, dropout = 0.0)	
 					overall_cost += self.cost_function_MSE(self.activations[-1], form_vector(b))
 
 			else:
 				for a,b in data:
-					self.FeedForward(a, dropout = 0.0, batch_norm = 0)	
+					self.FeedForward(a, dropout = 0.0)	
 					overall_cost += self.cost_function_MSE(self.activations[-1], b)
 		else:                                             # if CEntropy cost requested
 			if convert == 1:
 				for a.b in data:
-					self.FeedForward(a, dropout = 0.0, batch_norm = 0)	
+					self.FeedForward(a, dropout = 0.0)	
 					overall_cost += self.cost_function_CEntropy(self.activations[-1], form_vector(b))
 
 			else:
 				for a,b in data:
-					self.FeedForward(a, dropout = 0.0, batch_norm = 0)	
+					self.FeedForward(a, dropout = 0.0)	
 					overall_cost += self.cost_function_CEntropy(self.activations[-1], b)
 		overall_cost = overall_cost/len(data)
 
