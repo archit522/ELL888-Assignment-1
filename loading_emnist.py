@@ -9,7 +9,7 @@ def load_data():
     i_train = []
     l_train = []
     for x, y in zip(labels_train, images_train):
-        if x==10 or x==12 or x==20 or x==18 or x==17 or x==28:  #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
+        if x==10 or x==12 or x==20 or x==18 or x==17 or x==28:  #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a, c, i. k, h, s)
             if x==10:
 		label = 0
 	    elif x==12:
@@ -27,7 +27,7 @@ def load_data():
     i_test = []
     l_test = []
     for x, y in zip(labels_test, images_test):
-        if x==10 or x==12 or x==20 or x==18 or x==17 or x==28:   #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a-f)
+        if x==10 or x==12 or x==20 or x==18 or x==17 or x==28:   #See the emnist-balanced-mapping.txt file in the dataset (Choosing only letters a, c, i. k, h, s)
             if x==10:
 		label = 0
 	    elif x==12:
